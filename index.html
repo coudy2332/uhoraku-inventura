@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#121212">
+    <title>Inventura Baru v29</title>
+    <style>
+        :root {
+            --bg: #121212; --card: #1e1e1e; --primary: #bb86fc;
+            --secondary: #03dac6; --error: #cf6679; --text: #e0e0e0; --success: #4caf50;
+        }
+        body {
+            font-family: sans-serif; background-color: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0;
+            overscroll-behavior-y: contain;
+        }
+        .container {
+            width: 100%; max-width: 450px; background: var(--card); padding: 20px;
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); box-sizing: border-box;
+        }
+        h2 { text-align: center; color: var(--primary); margin-bottom: 15px; }
+        
+        /* Vyhledávání s křížkem */
+        .search-wrapper { position: relative; width: 100%; margin-bottom: 10px; }
+        #search {
+            width: 100%; padding: 12px 40px 12px 12px; border-radius: 8px; border: 1px solid var(--primary);
+            background: #2c2c2c; color: white; font-size: 16px; box-sizing: border-box;
+        }
+        .clear-search {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            color: #666; font-size: 20px; cursor: pointer; font-weight: bold; padding: 5px;
+        }
+
+        /* Seznam lahví */
+        .bottle-selector {
+            height: 200px; overflow-y: auto; background: #252525;
+            border-radius: 8px; border: 1px solid #333; margin-bottom: 15px; padding: 5px;
+        }
+        .kat-header { font-size: 0.75em; color: var(--primary); text-transform: uppercase; padding: 10px 5px 5px; font-weight: bold; }
+        .bottle-item {
+            padding: 12px 10px; margin: 2px 0; border-radius: 5px; cursor: pointer;
+            border-bottom: 1px solid #333; transition: 0.2s;
+        }
+        .bottle-item.selected { background: var(--primary); color: #000; font-weight: bold; }
+        
+        input#weight {
+            width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px;
+            border: 1px solid #333; background: #2c2c2c; color: white; font-size: 24px; text-align: center; box-sizing: border-box;
+            -webkit-appearance: none; margin: 0; -moz-appearance: textfield;
+        }
+        input#weight::-webkit-outer-spin-button, input#weight::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .result-box {
+            background: #252525; padding: 15px; border-radius: 10px; text-align: center;
+            border: 1px solid var(--primary); margin-bottom: 15px; min-height: 80px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .saved-flash { background-color: var(--success) !important; }
+        .result-val { font-size: 2.5em; font-weight: bold; color: var(--primary); }
+        
+        button { width: 100%; padding: 15px; border-radius: 8px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn-save { background-color: var(--secondary); color: #000; }
+        .btn-clear { background-color: transparent; color: var(--error); border: 1px solid var(--error); margin-top: 20px; }
+
+        /* Stránkování historie */
+        .history-section { width: 100%; max-width: 450px; margin-top: 30px; }
+        .history-pagination {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px; padding: 0 5px; font-size: 0.85em; color: #aaa;
+        }
+        .btn-page { background: #333; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+        .btn-page:disabled { opacity: 0.2; cursor: default; }
+
+        .history-item {
+            background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 8px;
+            border-left: 4px solid var(--secondary); font-size: 0.85em;
+            display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
+        }
+        .history-info b { color: var(--primary); font-size: 1.1em; display: block; }
+        .history-details { font-size: 0.85em; color: #aaa; }
+        .history-time { font-size: 0.75em; color: #666; display: block; }
+        .history-vol { font-weight: bold; color: var(--primary); font-size: 1.2em; }
+        .btn-del-item { background: none; color: var(--error); border: none; font-size: 24px; padding: 0 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Inventura v29</h2>
+
+    <div class="search-wrapper">
+        <input type="text" id="search" placeholder="Hledej lahev..." oninput="renderList()">
+        <span class="clear-search" onclick="clearSearchInput()">×</span>
+    </div>
+
+    <div class="bottle-selector" id="bottle-list"></div>
+
+    <label for="weight">Váha celkem (g):</label>
+    <input type="number" id="weight" placeholder="Zadej gramy..." oninput="handleInput()" inputmode="numeric">
+
+    <div class="result-box" id="resBox">
+        <span class="result-val" id="resLitre">0.00 L</span>
+    </div>
+
+    <button class="btn-save" onclick="saveToHistory()">Uložit do historie</button>
+</div>
+
+<div class="history-section">
+    <div class="history-pagination" id="history-pager"></div>
+    <div id="historyList"></div>
+    <button class="btn-clear" onclick="clearHistory()">Smazat celou historii</button>
+</div>
+
+<script>
+// ==========================================
+// AKTUALIZOVANÁ DATABÁZE
+// ==========================================
+const BOTTLE_DB = [
+    { name: "Vodka Absolut 1l", tara: 650, density: 0.945, kat: "Vodka" },
+    { name: "Vodka Finská 1l", tara: 598, density: 0.945, kat: "Vodka" },
+    { name: "Grey Goose 0.7l", tara: 597, density: 0.945, kat: "Vodka" },
+    { name: "Beefeater Gin 1l", tara: 662, density: 0.945, kat: "Gin" },
+    { name: "Růžový Gin 1l", tara: 662, density: 0.965, kat: "Gin" },
+    { name: "Jack Daniels No. 7 1l", tara: 608, density: 0.948, kat: "Whiskey & Rum" },
+    { name: "Jack Daniels Honey 1l", tara: 608, density: 1.025, kat: "Whiskey & Rum" },
+    { name: "Jack Daniels Fire 1l", tara: 608, density: 1.025, kat: "Whiskey & Rum" },
+    { name: "Jameson 1l", tara: 531, density: 0.948, kat: "Whiskey & Rum" },
+    { name: "Captain Morgan 1l", tara: 520, density: 0.980, kat: "Whiskey & Rum" },
+    { name: "Bumbu 0.7l", tara: 846, density: 0.965, kat: "Whiskey & Rum" },
+    { name: "Diplomatico 0.7l", tara: 425, density: 0.965, kat: "Whiskey & Rum" },
+    { name: "Božkov Republica 0.7l", tara: 533, density: 0.970, kat: "Whiskey & Rum" },
+    { name: "Bacardi 1l", tara: 587, density: 0.945, kat: "Whiskey & Rum" },
+    { name: "Božkov 1l", tara: 508, density: 0.970, kat: "Whiskey & Rum" },
+    { name: "Dos Maderas 0.7l", tara: 811, density: 0.965, kat: "Whiskey & Rum" },
+    { name: "Jägermeister 1l", tara: 748, density: 1.050, kat: "Likéry" },
+    { name: "Aperol 1l", tara: 588, density: 1.055, kat: "Likéry" },
+    { name: "Campari 1l", tara: 558, density: 1.055, kat: "Likéry" },
+    { name: "Fernet Stock 1l", tara: 708, density: 0.955, kat: "Likéry" },
+    { name: "Fernet Stock Citrus 1l", tara: 708, density: 1.025, kat: "Likéry" },
+    { name: "Bartida 1l", tara: 662, density: 1.045, kat: "Likéry" },
+    { name: "Becherovka 1l", tara: 693, density: 1.030, kat: "Likéry" },
+    { name: "Becherovka Lemon 1l", tara: 693, density: 1.045, kat: "Likéry" },
+    { name: "Koskenkorva Peach 1l", tara: 691, density: 1.020, kat: "Likéry" },
+    { name: "Olmeca S/G 1l", tara: 721, density: 0.956, kat: "Tequila" },
+    { name: "Víno červené (BiB)", tara: 245, density: 0.992, kat: "Vína" },
+    { name: "Víno bílé (BiB)", tara: 245, density: 0.993, kat: "Vína" },
+    { name: "Prosecco 0.75l", tara: 499, density: 0.995, kat: "Vína" },
+    { name: "Martini Bianco 1l", tara: 598, density: 1.035, kat: "Ostatní" },
+    { name: "Martini Rosso 1l", tara: 598, density: 1.035, kat: "Ostatní" },
+    { name: "Martini Extra Dry 1l", tara: 598, density: 0.990, kat: "Ostatní" },
+    { name: "Jelínek 0.7l", tara: 577, density: 0.935, kat: "Ostatní" },
+    { name: "Stará myslivecká 0.7l", tara: 476.7, density: 0.960, kat: "Ostatní" }
+];
+
+let selectedBottle = null;
+let currentVolume = 0;
+let autoSaveTimer;
+let currentHistoryPage = 1;
+const historyItemsPerPage = 10;
+
+// Pomocná funkce pro vyhledávání bez diakritiky
+function removeAccents(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function clearSearchInput() {
+    document.getElementById('search').value = "";
+    renderList();
+}
+
+function renderList() {
+    const searchRaw = document.getElementById('search').value;
+    const search = removeAccents(searchRaw);
+    const listDiv = document.getElementById('bottle-list');
+    const filteredDB = BOTTLE_DB.filter(b => removeAccents(b.name).includes(search));
+
+    let html = "";
+    let lastKat = "";
+
+    filteredDB.forEach(b => {
+        if (b.kat !== lastKat) {
+            html += `<div class="kat-header">${b.kat}</div>`;
+            lastKat = b.kat;
+        }
+        const isSelected = selectedBottle && selectedBottle.name === b.name ? 'selected' : '';
+        html += `<div class="bottle-item ${isSelected}" onclick="selectBottle('${b.name}')">${b.name}</div>`;
+    });
+    listDiv.innerHTML = html || "<div style='padding:15px; color:#666; text-align:center;'>Nenalezeno...</div>";
+}
+
+function selectBottle(name) {
+    selectedBottle = BOTTLE_DB.find(b => b.name === name);
+    document.getElementById('weight').value = "";
+    document.getElementById('resLitre').innerText = "0.00 L";
+    currentVolume = 0;
+    renderList();
+    document.getElementById('weight').focus();
+}
+
+function handleInput() {
+    if (!selectedBottle) return;
+    const weightInput = document.getElementById('weight').value;
+    const weight = parseFloat(weightInput);
+    
+    if (!weight || weight <= selectedBottle.tara) {
+        document.getElementById('resLitre').innerText = "0.00 L";
+        currentVolume = 0;
+    } else {
+        const netWeight = weight - selectedBottle.tara;
+        currentVolume = (netWeight / selectedBottle.density / 1000).toFixed(2);
+        document.getElementById('resLitre').innerText = currentVolume + " L";
+    }
+
+    clearTimeout(autoSaveTimer);
+    if (currentVolume > 0) {
+        autoSaveTimer = setTimeout(() => saveToHistory(), 1500);
+    }
+}
+
+function saveToHistory() {
+    const weightVal = document.getElementById('weight').value;
+    if (!selectedBottle || !weightVal || currentVolume <= 0) return;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('cs-CZ', {day: '2-digit', month: '2-digit'});
+    const timeStr = now.toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'});
+
+    const entry = { name: selectedBottle.name, weight: weightVal, volume: currentVolume, date: dateStr, time: timeStr };
+    let history = JSON.parse(localStorage.getItem('barHistory')) || [];
+    history.unshift(entry);
+    localStorage.setItem('barHistory', JSON.stringify(history));
+
+    currentHistoryPage = 1;
+    renderHistory();
+    
+    const resBox = document.getElementById('resBox');
+    resBox.classList.add('saved-flash');
+    setTimeout(() => resBox.classList.remove('saved-flash'), 500);
+    
+    document.getElementById('weight').value = "";
+    clearTimeout(autoSaveTimer);
+}
+
+function renderHistory() {
+    const historyList = document.getElementById('historyList');
+    const pager = document.getElementById('history-pager');
+    const history = JSON.parse(localStorage.getItem('barHistory')) || [];
+    
+    if (history.length === 0) {
+        historyList.innerHTML = "";
+        pager.innerHTML = "";
+        return;
+    }
+
+    const totalPages = Math.ceil(history.length / historyItemsPerPage);
+    const start = (currentHistoryPage - 1) * historyItemsPerPage;
+    const paginatedHistory = history.slice(start, start + historyItemsPerPage);
+
+    historyList.innerHTML = paginatedHistory.map((item, index) => {
+        const actualIndex = start + index;
+        return `
+        <div class="history-item">
+            <div class="history-info">
+                <span class="history-time">${item.date} | ${item.time}</span>
+                <b>${item.name}</b>
+                <span class="history-details">Váha: ${item.weight} g</span>
+            </div>
+            <div class="history-vol">${item.volume} L</div>
+            <button class="btn-del-item" onclick="deleteItem(${actualIndex})">×</button>
+        </div>
+    `}).join('');
+
+    pager.innerHTML = `
+        <button class="btn-page" ${currentHistoryPage === 1 ? 'disabled' : ''} onclick="changeHistoryPage(-1)">← Novější</button>
+        <span>Strana ${currentHistoryPage} / ${totalPages}</span>
+        <button class="btn-page" ${currentHistoryPage === totalPages ? 'disabled' : ''} onclick="changeHistoryPage(1)">Starší →</button>
+    `;
+}
+
+function changeHistoryPage(dir) {
+    currentHistoryPage += dir;
+    renderHistory();
+}
+
+function deleteItem(index) {
+    let history = JSON.parse(localStorage.getItem('barHistory')) || [];
+    history.splice(index, 1);
+    localStorage.setItem('barHistory', JSON.stringify(history));
+    const totalPages = Math.ceil(history.length / historyItemsPerPage);
+    if (currentHistoryPage > totalPages && totalPages > 0) currentHistoryPage = totalPages;
+    renderHistory();
+}
+
+function clearHistory() {
+    if(confirm('Opravdu smazat celou historii?')) {
+        localStorage.removeItem('barHistory');
+        currentHistoryPage = 1;
+        renderHistory();
+    }
+}
+
+// Ochrana proti kolečku myši
+document.getElementById('weight').addEventListener('wheel', function(e) { e.preventDefault(); }, { passive: false });
+
+renderList();
+renderHistory();
+</script>
+
+</body>
+</html>
