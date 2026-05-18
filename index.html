@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#121212">
-    <title>Inventura Baru v29</title>
+    <title>Inventura Baru v30</title>
     <style>
         :root {
             --bg: #121212; --card: #1e1e1e; --primary: #bb86fc;
@@ -89,7 +89,7 @@
 <body>
 
 <div class="container">
-    <h2>Inventura v29</h2>
+    <h2>Inventura v30</h2>
 
     <div class="search-wrapper">
         <input type="text" id="search" placeholder="Hledej lahev..." oninput="renderList()">
@@ -130,6 +130,7 @@ const BOTTLE_DB = [
     { name: "Jameson 1l", tara: 531, density: 0.948, kat: "Whiskey & Rum" },
     { name: "Captain Morgan 1l", tara: 520, density: 0.980, kat: "Whiskey & Rum" },
     { name: "Bumbu 0.7l", tara: 846, density: 0.965, kat: "Whiskey & Rum" },
+    { name: "Legendario Elixir 0.7l", tara: 524, density: 1.030, kat: "Whiskey & Rum" },
     { name: "Diplomatico 0.7l", tara: 425, density: 0.965, kat: "Whiskey & Rum" },
     { name: "Božkov Republica 0.7l", tara: 533, density: 0.970, kat: "Whiskey & Rum" },
     { name: "Bacardi 1l", tara: 587, density: 0.945, kat: "Whiskey & Rum" },
@@ -161,7 +162,6 @@ let autoSaveTimer;
 let currentHistoryPage = 1;
 const historyItemsPerPage = 10;
 
-// Pomocná funkce pro vyhledávání bez diakritiky
 function removeAccents(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
@@ -302,9 +302,7 @@ function clearHistory() {
     }
 }
 
-// Ochrana proti kolečku myši
 document.getElementById('weight').addEventListener('wheel', function(e) { e.preventDefault(); }, { passive: false });
-
 renderList();
 renderHistory();
 </script>
